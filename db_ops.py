@@ -58,16 +58,22 @@ def insert_reminder(user_id, task, datetime, recurrence=None, status='pending'):
         logger.error(f"Database error while inserting reminder: {e}", exc_info=True)
         return None
 
-def get_active_tasks():
+def get_active_tasks(user_id=None):
     try:
         with sqlite3.connect(DB_NAME) as conn:
             conn.row_factory = sqlite3.Row
             cursor = conn.cursor()
-            cursor.execute(
-                "SELECT * FROM reminders WHERE status = 'pending'"
-            )
+            if user_id:
+                cursor.execute(
+                    "SELECT * FROM reminders WHERE status = 'pending' AND user_id = ?",
+                    (user_id,)
+                )
+            else:
+                cursor.execute(
+                    "SELECT * FROM reminders WHERE status = 'pending'"
+                )
             tasks = [dict(row) for row in cursor.fetchall()]
-            logger.info(f"Retrieved {len(tasks)} active tasks.")
+            logger.info(f"Retrieved {len(tasks)} active tasks" + (f" for user {user_id}" if user_id else ""))
             return tasks
     except sqlite3.Error as e:
         logger.error(f"Database error while fetching active tasks: {e}", exc_info=True)
