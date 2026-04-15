@@ -21,6 +21,8 @@ from dotenv import load_dotenv
 
 import db_ops
 from ai_parser import parse_intent
+import scheduler
+from datetime import datetime
 
 # Configure logging
 logging.basicConfig(level=logging.INFO, format='%(asctime)s - %(levelname)s - %(message)s')
@@ -74,7 +76,15 @@ def webhook():
             else:
                 reminder_id = db_ops.insert_reminder(user_id, task, dt, recurrence)
                 if reminder_id:
-                    msg.body(f"Done! I've set a reminder for '{task}'.")
+                    try:
+                        parsed_dt = datetime.fromisoformat(dt)
+                        job_id = scheduler.schedule_reminder(task, parsed_dt, sender_number)
+                        if job_id:
+                            msg.body(f"Done! I've set a reminder for '{task}'.")
+                        else:
+                            msg.body(f"Done! I've saved the reminder for '{task}', but scheduling failed.")
+                    except ValueError:
+                        msg.body(f"Done! I've set a reminder for '{task}', but the time format is unreadable.")
                 else:
                     msg.body("Sorry, I couldn't save that reminder due to a database error.")
         elif intent == "get_tasks":

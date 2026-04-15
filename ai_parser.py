@@ -5,6 +5,10 @@ from datetime import datetime
 import pytz
 import google.generativeai as genai
 
+api_key = os.environ.get("GEMINI_API_KEY") or os.environ.get("GOOGLE_API_KEY")
+if api_key:
+    genai.configure(api_key=api_key)
+
 # Setup basic logging
 logging.basicConfig(level=logging.ERROR)
 logger = logging.getLogger(__name__)
