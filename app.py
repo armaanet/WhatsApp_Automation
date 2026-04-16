@@ -80,7 +80,7 @@ def webhook():
                         parsed_dt = datetime.fromisoformat(dt)
                         job_id = scheduler.schedule_reminder(task, parsed_dt, sender_number)
                         if job_id:
-                            msg.body(f"Done! I've set a reminder for '{task}'.")
+                            msg.body(f"Done! I've set a reminder for '{task}' at {parsed_dt.strftime('%Y-%m-%d %H:%M')}.")
                         else:
                             msg.body(f"Done! I've saved the reminder for '{task}', but scheduling failed.")
                     except ValueError:
