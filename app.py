@@ -23,6 +23,8 @@ import db_ops
 from ai_parser import parse_intent
 import scheduler
 from datetime import datetime
+import sqlite3
+import pytz
 
 # Configure logging
 logging.basicConfig(level=logging.INFO, format='%(asctime)s - %(levelname)s - %(message)s')
@@ -78,7 +80,7 @@ def webhook():
                 if reminder_id:
                     try:
                         parsed_dt = datetime.fromisoformat(dt)
-                        job_id = scheduler.schedule_reminder(task, parsed_dt, sender_number)
+                        job_id = scheduler.schedule_reminder(task, parsed_dt, sender_number, reminder_id)
                         if job_id:
                             msg.body(f"Done! I've set a reminder for '{task}' at {parsed_dt.strftime('%Y-%m-%d %H:%M')}.")
                         else:
@@ -108,7 +110,55 @@ def webhook():
         # We can return an error string with a 500 status code
         return str(resp), 500
 
+def restore_pending_jobs():
+    """Restores pending jobs from the database on app restart."""
+    try:
+        with sqlite3.connect('assistant.db') as conn:
+            conn.row_factory = sqlite3.Row
+            cursor = conn.cursor()
+            cursor.execute('''
+                SELECT r.id, r.task, r.datetime, u.phone_number, r.status
+                FROM reminders r
+                JOIN users u ON r.user_id = u.id
+                WHERE r.status = 'active'
+            ''')
+            reminders = cursor.fetchall()
+            
+            kolkata_tz = pytz.timezone('Asia/Kolkata')
+            now = datetime.now(kolkata_tz)
+            
+            count = 0
+            for row in reminders:
+                task_text = row['task']
+                dt_str = row['datetime']
+                phone_number = row['phone_number']
+                
+                try:
+                    # Parse the database datetime
+                    parsed_dt = datetime.fromisoformat(dt_str)
+                    
+                    # Make parsed_dt timezone aware if it isn't
+                    if parsed_dt.tzinfo is None:
+                        parsed_dt = kolkata_tz.localize(parsed_dt)
+                        
+                    # Only schedule if it's in the future
+                    if parsed_dt > now:
+                        scheduler.schedule_reminder(task_text, parsed_dt, phone_number, row['id'])
+                        logger.info(f"Restored reminder for {phone_number} at {parsed_dt}")
+                        count += 1
+                except ValueError:
+                    logger.error(f"Failed to parse datetime '{dt_str}' for reminder {row['id']}")
+            
+            if count > 0:
+                logger.info(f"Successfully restored {count} pending jobs.")
+                    
+    except sqlite3.Error as e:
+        logger.error(f"Database error while restoring pending jobs: {e}")
+
 if __name__ == '__main__':
+    # Restore jobs from DB
+    restore_pending_jobs()
+
     # Run the Flask app
     debug_mode = os.environ.get('FLASK_DEBUG', 'False').lower() == 'true'
     app.run(host='0.0.0.0', port=5000, debug=debug_mode)

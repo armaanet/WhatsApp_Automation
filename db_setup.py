@@ -27,7 +27,7 @@ def setup_database():
                     task TEXT NOT NULL,
                     datetime TEXT NOT NULL,
                     recurrence TEXT,
-                    status TEXT DEFAULT 'pending',
+                    status TEXT DEFAULT 'active',
                     FOREIGN KEY (user_id) REFERENCES users (id)
                 )
             ''')

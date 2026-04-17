@@ -3,19 +3,22 @@ import os
 sys.path.append(os.path.dirname(os.path.dirname(os.path.abspath(__file__))))
 from app import app
 import app as app_module
+from datetime import datetime, timedelta
+import pytz
 
 # Mock ai_parser and scheduler for integration testing
 def mock_parse_intent(text):
+    future_time = datetime.now(pytz.timezone('Asia/Kolkata')) + timedelta(days=1)
     return {
         "intent": "set_reminder",
         "task": "call Mom",
-        "datetime": "2026-04-16T18:00:00+05:30",
+        "datetime": future_time.isoformat(),
         "recurrence": None
     }
 app_module.parse_intent = mock_parse_intent
 
-def mock_schedule_reminder(task_text, target_time, to_number):
-    print(f"Mock scheduled reminder '{task_text}' for {target_time} to {to_number}")
+def mock_schedule_reminder(task_text, target_time, to_number, reminder_id=None):
+    print(f"Mock scheduled reminder '{task_text}' for {target_time} to {to_number} with ID: {reminder_id}")
     return "mock_job_id"
 app_module.scheduler.schedule_reminder = mock_schedule_reminder
 

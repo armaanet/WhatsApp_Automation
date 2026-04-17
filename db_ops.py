@@ -40,7 +40,7 @@ def add_user(phone_number):
         logger.error(f"Database error while adding user: {e}", exc_info=True)
         return None
 
-def insert_reminder(user_id, task, datetime, recurrence=None, status='pending'):
+def insert_reminder(user_id, task, datetime, recurrence=None, status='active'):
     try:
         with sqlite3.connect(DB_NAME) as conn:
             cursor = conn.cursor()
@@ -65,12 +65,12 @@ def get_active_tasks(user_id=None):
             cursor = conn.cursor()
             if user_id:
                 cursor.execute(
-                    "SELECT * FROM reminders WHERE status = 'pending' AND user_id = ?",
+                    "SELECT * FROM reminders WHERE status = 'active' AND user_id = ?",
                     (user_id,)
                 )
             else:
                 cursor.execute(
-                    "SELECT * FROM reminders WHERE status = 'pending'"
+                    "SELECT * FROM reminders WHERE status = 'active'"
                 )
             tasks = [dict(row) for row in cursor.fetchall()]
             logger.info(f"Retrieved {len(tasks)} active tasks" + (f" for user {user_id}" if user_id else ""))

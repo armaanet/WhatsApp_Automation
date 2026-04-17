@@ -3,6 +3,7 @@ from datetime import datetime
 from apscheduler.schedulers.background import BackgroundScheduler
 from twilio.rest import Client
 import pytz
+import db_ops
 
 # Configure the scheduler for the Asia/Kolkata timezone
 kolkata_tz = pytz.timezone('Asia/Kolkata')
@@ -10,7 +11,7 @@ scheduler = BackgroundScheduler(timezone=kolkata_tz)
 # Start the scheduler
 scheduler.start()
 
-def send_whatsapp_message(to_number: str, text: str):
+def send_whatsapp_message(to_number: str, text: str, reminder_id: int = None):
     """
     Sends a WhatsApp message using the standard Twilio REST API client.
     """
@@ -35,10 +36,12 @@ def send_whatsapp_message(to_number: str, text: str):
             to=recipient
         )
         print(f"Message sent successfully! SID: {message.sid}")
+        if reminder_id is not None:
+            db_ops.update_task_status(reminder_id, 'completed')
     except Exception as e:
         print(f"Failed to send message: {e}")
 
-def schedule_reminder(task_text: str, target_time: datetime, to_number: str):
+def schedule_reminder(task_text: str, target_time: datetime, to_number: str, reminder_id: int = None):
     """
     Adds a job to the BackgroundScheduler to execute `send_whatsapp_message`
     at the specified `target_time`.
@@ -48,7 +51,7 @@ def schedule_reminder(task_text: str, target_time: datetime, to_number: str):
             send_whatsapp_message,
             trigger='date',
             run_date=target_time,
-            args=[to_number, task_text]
+            args=[to_number, task_text, reminder_id]
         )
         print(f"Reminder scheduled successfully. Job ID: {job.id} at {target_time}")
         return job.id
